@@ -4,24 +4,22 @@ use bevy::{
     asset::ChangeWatcher,
     core_pipeline::{core_3d, fullscreen_vertex_shader::fullscreen_shader_vertex_state},
     prelude::*,
-    reflect::TypeUuid,
     render::{
         camera::ScalingMode,
-        extract_component::{ComponentUniforms, ExtractComponentPlugin},
-        render_graph::{Node, NodeRunError, RenderGraph, RenderGraphApp, RenderGraphContext},
+        render_graph::{Node, NodeRunError, RenderGraphApp, RenderGraphContext},
         render_resource::{
             BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BindGroupLayoutDescriptor,
             BindGroupLayoutEntry, BindingResource, BindingType, CachedRenderPipelineId,
             ColorTargetState, ColorWrites, FragmentState, MultisampleState, Operations,
-            PipelineCache, PrimitiveState, RawRenderPipelineDescriptor, RenderPassColorAttachment,
+            PipelineCache, PrimitiveState, RenderPassColorAttachment,
             RenderPassDescriptor, RenderPipelineDescriptor, Sampler, SamplerBindingType,
-            SamplerDescriptor, ShaderStages, Texture, TextureFormat, TextureSampleType,
-            TextureViewDimension,
+            SamplerDescriptor, ShaderStages, TextureFormat, TextureSampleType,
+            TextureViewDimension, ShaderType,
         },
         renderer::{RenderContext, RenderDevice},
         texture::BevyDefault,
         view::{ExtractedView, ViewTarget},
-        RenderApp,
+        RenderApp, extract_component::{ExtractComponent, ComponentUniforms, ExtractComponentPlugin, UniformComponentPlugin},
     },
 };
 
@@ -37,7 +35,7 @@ fn main() {
         ))
         .init_resource::<GridWalkable>()
         .add_systems(Startup, setup)
-        .add_systems(Update, player_movement)
+        .add_systems(Update, (player_movement, update_resolution))
         .run();
 }
 
@@ -58,6 +56,20 @@ struct PostProcessPlugin;
 
 impl Plugin for PostProcessPlugin {
     fn build(&self, app: &mut App) {
+        app.add_plugins((
+            // The settings will be a component that lives in the main world but will
+            // be extracted to the render world every frame.
+            // This makes it possible to control the effect from the main world.
+            // This plugin will take care of extracting it automatically.
+            // It's important to derive [`ExtractComponent`] on [`PostProcessingSettings`]
+            // for this plugin to work correctly.
+            ExtractComponentPlugin::<PostProcessSettings>::default(),
+            // The settings will also be the data used in the shader.
+            // This plugin will prepare the component for the GPU by creating a uniform buffer
+            // and writing the data to that buffer every frame.
+            UniformComponentPlugin::<PostProcessSettings>::default(),
+        ));
+
         // We need to get the render app from the main app
         let Ok(render_app) = app.get_sub_app_mut(RenderApp) else {
             return;
@@ -152,6 +164,11 @@ impl Node for PostProcessNode {
             return Ok(());
         };
 
+        let settings_uniforms = world.resource::<ComponentUniforms<PostProcessSettings>>();
+        let Some(settings_binding) = settings_uniforms.uniforms().binding() else {
+            return Ok(());
+        };
+
         // This will start a new "post process write", obtaining two texture
         // views from the view target - a `source` and a `destination`.
         // `source` is the "current" main texture and you _must_ write into
@@ -182,6 +199,11 @@ impl Node for PostProcessNode {
                         binding: 1,
                         // Use the sampler created for the pipeline
                         resource: BindingResource::Sampler(&post_process_pipeline.sampler),
+                    },
+                    BindGroupEntry {
+                        binding: 2,
+                        // Set the settings binding
+                        resource: settings_binding.clone(),
                     },
                 ],
             });
@@ -241,6 +263,16 @@ impl FromWorld for PostProcessPipeline {
                     ty: BindingType::Sampler(SamplerBindingType::Filtering),
                     count: None,
                 },
+                BindGroupLayoutEntry {
+                    binding: 2,
+                    visibility: ShaderStages::FRAGMENT,
+                    ty: BindingType::Buffer {
+                        ty: bevy::render::render_resource::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
             ],
         });
 
@@ -283,6 +315,12 @@ impl FromWorld for PostProcessPipeline {
     }
 }
 
+#[derive(Component, Default, Clone, Copy, ExtractComponent, ShaderType)]
+struct PostProcessSettings {
+    height: f32,
+    width: f32,
+}
+
 fn setup(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
@@ -302,6 +340,10 @@ fn setup(
             ..default()
         },
         Camera,
+        PostProcessSettings {
+            height: 720.0,
+            width: 1280.0,
+        }
     ));
 
     // plane
@@ -391,6 +433,18 @@ fn player_movement(
 
         if moved {
             grid.cooldown.reset();
+        }
+    }
+}
+
+fn update_resolution(
+    mut post_process_settings: Query<&mut PostProcessSettings>,
+    windows: Query<&Window>,
+) {
+    if let Ok(window) = windows.get_single() {
+        for mut setting in &mut post_process_settings {
+            setting.height = window.physical_height() as f32;
+            setting.width = window.physical_width() as f32;
         }
     }
 }

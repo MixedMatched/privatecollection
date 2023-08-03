@@ -5,11 +5,17 @@
 var screen_texture: texture_2d<f32>;
 @group(0) @binding(1)
 var texture_sampler: sampler;
+struct PostProcessSettings {
+    height: f32,
+    width: f32,
+}
+@group(0) @binding(2)
+var<uniform> window_resolution : PostProcessSettings;
 
-const SCALE: f32 = 128.0;
+const SCALE: f32 = 4.0;
 
 fn downsample(in: vec2<f32>) -> vec2<f32> {
-    return floor(in * SCALE) / SCALE;
+    return vec2<f32>(floor(in.x * window_resolution.width / SCALE) / window_resolution.width * SCALE, floor(in.y * window_resolution.height / SCALE) / window_resolution.height * SCALE);
 }
 
 @fragment
