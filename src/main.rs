@@ -1,21 +1,44 @@
 use std::time::Duration;
 
-use bevy::{prelude::*, render::{camera::ScalingMode, render_resource::{Texture, PipelineCache, BindGroupDescriptor, BindGroupEntry, BindingResource, RenderPassColorAttachment, Operations, RenderPassDescriptor, CachedRenderPipelineId, BindGroupLayout, Sampler, BindGroupLayoutDescriptor, BindGroupLayoutEntry, ShaderStages, BindingType, TextureSampleType, TextureViewDimension, SamplerBindingType, RawRenderPipelineDescriptor, SamplerDescriptor, RenderPipelineDescriptor, FragmentState, ColorTargetState, TextureFormat, ColorWrites, PrimitiveState, MultisampleState}, extract_component::{ExtractComponentPlugin, ComponentUniforms}, view::{ViewTarget, ExtractedView}, render_graph::{RenderGraph, RenderGraphContext, NodeRunError, Node, RenderGraphApp}, renderer::{RenderContext, RenderDevice}, texture::BevyDefault, RenderApp}, reflect::TypeUuid, core_pipeline::{fullscreen_vertex_shader::fullscreen_shader_vertex_state, core_3d}, asset::ChangeWatcher};
+use bevy::{
+    asset::ChangeWatcher,
+    core_pipeline::{core_3d, fullscreen_vertex_shader::fullscreen_shader_vertex_state},
+    prelude::*,
+    reflect::TypeUuid,
+    render::{
+        camera::ScalingMode,
+        extract_component::{ComponentUniforms, ExtractComponentPlugin},
+        render_graph::{Node, NodeRunError, RenderGraph, RenderGraphApp, RenderGraphContext},
+        render_resource::{
+            BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BindGroupLayoutDescriptor,
+            BindGroupLayoutEntry, BindingResource, BindingType, CachedRenderPipelineId,
+            ColorTargetState, ColorWrites, FragmentState, MultisampleState, Operations,
+            PipelineCache, PrimitiveState, RawRenderPipelineDescriptor, RenderPassColorAttachment,
+            RenderPassDescriptor, RenderPipelineDescriptor, Sampler, SamplerBindingType,
+            SamplerDescriptor, ShaderStages, Texture, TextureFormat, TextureSampleType,
+            TextureViewDimension,
+        },
+        renderer::{RenderContext, RenderDevice},
+        texture::BevyDefault,
+        view::{ExtractedView, ViewTarget},
+        RenderApp,
+    },
+};
 
 fn main() {
     // Set up the Bevy app
     App::new()
-    .add_plugins((
-        DefaultPlugins.set(AssetPlugin {
-            watch_for_changes: ChangeWatcher::with_delay(Duration::from_secs(1)),
-            ..default()
-        }),
-        PostProcessPlugin,
-    ))
-    .init_resource::<GridWalkable>()
-    .add_systems(Startup, setup)
-    .add_systems(Update, player_movement)
-    .run();
+        .add_plugins((
+            DefaultPlugins.set(AssetPlugin {
+                watch_for_changes: ChangeWatcher::with_delay(Duration::from_secs(1)),
+                ..default()
+            }),
+            PostProcessPlugin,
+        ))
+        .init_resource::<GridWalkable>()
+        .add_systems(Startup, setup)
+        .add_systems(Update, player_movement)
+        .run();
 }
 
 #[derive(Component)]
@@ -196,7 +219,7 @@ struct PostProcessPipeline {
 impl FromWorld for PostProcessPipeline {
     fn from_world(world: &mut World) -> Self {
         let render_device = world.resource::<RenderDevice>();
-    
+
         let layout = render_device.create_bind_group_layout(&BindGroupLayoutDescriptor {
             label: Some("post_process_bind_group_layout"),
             entries: &[
@@ -223,35 +246,34 @@ impl FromWorld for PostProcessPipeline {
 
         let sampler = render_device.create_sampler(&SamplerDescriptor::default());
 
-        let shader = world
-            .resource::<AssetServer>()
-            .load("pixel_art.wgsl");
+        let shader = world.resource::<AssetServer>().load("pixel_art.wgsl");
 
-        let pipeline_id = world
-            .resource_mut::<PipelineCache>()
-            .queue_render_pipeline(RenderPipelineDescriptor {
-                label: Some("post_process_pipeline".into()),
-                layout: vec![layout.clone()],
-                vertex: fullscreen_shader_vertex_state(),
-                fragment: Some(FragmentState {
-                    shader,
-                    shader_defs: vec![],
-                    // Make sure this matches the entry point of your shader.
-                    // It can be anything as long as it matches here and in the shader.
-                    entry_point: "fragment".into(),
-                    targets: vec![Some(ColorTargetState {
-                        format: TextureFormat::bevy_default(),
-                        blend: None,
-                        write_mask: ColorWrites::ALL,
-                    })],
-                }),
-                // All of the following properties are not important for this effect so just use the default values.
-                // This struct doesn't have the Default trait implemented because not all field can have a default value.
-                primitive: PrimitiveState::default(),
-                depth_stencil: None,
-                multisample: MultisampleState::default(),
-                push_constant_ranges: vec![],
-            });
+        let pipeline_id =
+            world
+                .resource_mut::<PipelineCache>()
+                .queue_render_pipeline(RenderPipelineDescriptor {
+                    label: Some("post_process_pipeline".into()),
+                    layout: vec![layout.clone()],
+                    vertex: fullscreen_shader_vertex_state(),
+                    fragment: Some(FragmentState {
+                        shader,
+                        shader_defs: vec![],
+                        // Make sure this matches the entry point of your shader.
+                        // It can be anything as long as it matches here and in the shader.
+                        entry_point: "fragment".into(),
+                        targets: vec![Some(ColorTargetState {
+                            format: TextureFormat::bevy_default(),
+                            blend: None,
+                            write_mask: ColorWrites::ALL,
+                        })],
+                    }),
+                    // All of the following properties are not important for this effect so just use the default values.
+                    // This struct doesn't have the Default trait implemented because not all field can have a default value.
+                    primitive: PrimitiveState::default(),
+                    depth_stencil: None,
+                    multisample: MultisampleState::default(),
+                    push_constant_ranges: vec![],
+                });
 
         Self {
             layout,
@@ -268,17 +290,19 @@ fn setup(
     mut grid_walkable: ResMut<GridWalkable>,
 ) {
     // camera
-    commands.spawn((Camera3dBundle {
-        projection: OrthographicProjection {
-            scale: 4.0,
-            scaling_mode: ScalingMode::FixedVertical(2.0),
+    commands.spawn((
+        Camera3dBundle {
+            projection: OrthographicProjection {
+                scale: 4.0,
+                scaling_mode: ScalingMode::FixedVertical(2.0),
+                ..default()
+            }
+            .into(),
+            transform: Transform::from_xyz(5.0, 5.0, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
             ..default()
-        }
-        .into(),
-        transform: Transform::from_xyz(5.0, 5.0, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
-        ..default()
-    },
-    Camera));
+        },
+        Camera,
+    ));
 
     // plane
     commands.spawn(PbrBundle {
@@ -288,13 +312,15 @@ fn setup(
     });
 
     // cube
-    commands.spawn((PbrBundle {
-        mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0 })),
-        material: materials.add(Color::rgb(0.8, 0.7, 0.6).into()),
-        transform: Transform::from_xyz(0.0, 0.5, 0.0),
-        ..default()
-    },
-    Player));
+    commands.spawn((
+        PbrBundle {
+            mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0 })),
+            material: materials.add(Color::rgb(0.8, 0.7, 0.6).into()),
+            transform: Transform::from_xyz(0.0, 0.5, 0.0),
+            ..default()
+        },
+        Player,
+    ));
 
     // light
     commands.spawn(PointLightBundle {
@@ -326,28 +352,36 @@ fn player_movement(
     if grid.cooldown.tick(time.delta()).finished() {
         let mut moved = false;
 
-        if keyboard_input.pressed(KeyCode::W) && grid.grid[grid.current_position.0 - 1][grid.current_position.1] {
+        if keyboard_input.pressed(KeyCode::W)
+            && grid.grid[grid.current_position.0 - 1][grid.current_position.1]
+        {
             grid.current_position.0 -= 1;
             for mut transform in query.iter_mut() {
                 transform.translation.z -= 1.0;
             }
             moved = true;
         }
-        if keyboard_input.pressed(KeyCode::S) && grid.grid[grid.current_position.0 + 1][grid.current_position.1] {
+        if keyboard_input.pressed(KeyCode::S)
+            && grid.grid[grid.current_position.0 + 1][grid.current_position.1]
+        {
             grid.current_position.0 += 1;
             for mut transform in query.iter_mut() {
                 transform.translation.z += 1.0;
             }
             moved = true;
         }
-        if keyboard_input.pressed(KeyCode::A) && grid.grid[grid.current_position.0][grid.current_position.1 - 1] {
+        if keyboard_input.pressed(KeyCode::A)
+            && grid.grid[grid.current_position.0][grid.current_position.1 - 1]
+        {
             grid.current_position.1 -= 1;
             for mut transform in query.iter_mut() {
                 transform.translation.x -= 1.0;
             }
             moved = true;
         }
-        if keyboard_input.pressed(KeyCode::D) && grid.grid[grid.current_position.0][grid.current_position.1 + 1] {
+        if keyboard_input.pressed(KeyCode::D)
+            && grid.grid[grid.current_position.0][grid.current_position.1 + 1]
+        {
             grid.current_position.1 += 1;
             for mut transform in query.iter_mut() {
                 transform.translation.x += 1.0;
