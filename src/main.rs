@@ -6,20 +6,22 @@ use bevy::{
     prelude::*,
     render::{
         camera::ScalingMode,
+        extract_component::{
+            ComponentUniforms, ExtractComponent, ExtractComponentPlugin, UniformComponentPlugin,
+        },
         render_graph::{Node, NodeRunError, RenderGraphApp, RenderGraphContext},
         render_resource::{
             BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BindGroupLayoutDescriptor,
             BindGroupLayoutEntry, BindingResource, BindingType, CachedRenderPipelineId,
             ColorTargetState, ColorWrites, FragmentState, MultisampleState, Operations,
-            PipelineCache, PrimitiveState, RenderPassColorAttachment,
-            RenderPassDescriptor, RenderPipelineDescriptor, Sampler, SamplerBindingType,
-            SamplerDescriptor, ShaderStages, TextureFormat, TextureSampleType,
-            TextureViewDimension, ShaderType,
+            PipelineCache, PrimitiveState, RenderPassColorAttachment, RenderPassDescriptor,
+            RenderPipelineDescriptor, Sampler, SamplerBindingType, SamplerDescriptor, ShaderStages,
+            ShaderType, TextureFormat, TextureSampleType, TextureViewDimension,
         },
         renderer::{RenderContext, RenderDevice},
         texture::BevyDefault,
         view::{ExtractedView, ViewTarget},
-        RenderApp, extract_component::{ExtractComponent, ComponentUniforms, ExtractComponentPlugin, UniformComponentPlugin},
+        RenderApp,
     },
 };
 
@@ -343,7 +345,7 @@ fn setup(
         PostProcessSettings {
             height: 720.0,
             width: 1280.0,
-        }
+        },
     ));
 
     // plane
