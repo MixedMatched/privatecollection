@@ -12,7 +12,7 @@ struct PostProcessSettings {
 @group(0) @binding(2)
 var<uniform> window_resolution : PostProcessSettings;
 
-const SCALE: f32 = 4.0;
+const SCALE: f32 = 5.0;
 
 fn downsample(in: vec2<f32>) -> vec2<f32> {
     return vec2<f32>(floor(in.x * window_resolution.width / SCALE) / window_resolution.width * SCALE, floor(in.y * window_resolution.height / SCALE) / window_resolution.height * SCALE);
