@@ -349,7 +349,7 @@ mod editor {
     #[derive(Component)]
     struct Highlighted;
 
-    const BOX_SIZE: f32 = 256.0;
+    const TILE_SIZE: f32 = 256.0;
 
     #[derive(Clone, Copy, Default, Eq, PartialEq, Debug, Hash, States)]
     enum DrawState {
@@ -424,12 +424,12 @@ mod editor {
                             TileType::Walkable => Color::WHITE,
                             TileType::Blocked => Color::GRAY,
                         },
-                        custom_size: Some(Vec2::new(BOX_SIZE, BOX_SIZE)),
+                        custom_size: Some(Vec2::new(TILE_SIZE, TILE_SIZE)),
                         ..default()
                     },
                     transform: Transform::from_translation(Vec3::new(
-                        x as f32 * BOX_SIZE,
-                        y as f32 * BOX_SIZE,
+                        x as f32 * TILE_SIZE,
+                        y as f32 * TILE_SIZE,
                         0.0,
                     )),
                     ..default()
@@ -472,8 +472,7 @@ mod editor {
                         ..default()
                     },
                     text_2d_bounds: Text2dBounds {
-                        size: Vec2::new(BOX_SIZE, BOX_SIZE),
-                        ..default()
+                        size: Vec2::new(TILE_SIZE, TILE_SIZE),
                     },
                     transform: Transform::from_translation(Vec3::Z),
                     ..default()
@@ -512,44 +511,46 @@ mod editor {
     ) {
         if let Ok(mut camera) = camera.get_single_mut() {
             if let Ok(window) = windows.get_single() {
-                let x = window.cursor_position().unwrap().x - window.width() * 0.5;
-                let y = window.height() * 0.5 - window.cursor_position().unwrap().y;
+                if let Some(position) = window.cursor_position() {
+                    let x = position.x - window.width() * 0.5;
+                    let y = window.height() * 0.5 - position.y;
 
-                let x = x + camera.translation.x;
-                let y = y + camera.translation.y;
+                    let x = x + camera.translation.x;
+                    let y = y + camera.translation.y;
 
-                let x = x * camera.scale.x;
-                let y = y * camera.scale.y;
+                    let x = x * camera.scale.x;
+                    let y = y * camera.scale.y;
 
-                let x = x.floor() / BOX_SIZE;
-                let y = y.floor() / BOX_SIZE;
+                    let x = x.floor() / TILE_SIZE;
+                    let y = y.floor() / TILE_SIZE;
 
-                if mouse_input.just_pressed(MouseButton::Left) {
-                    map.0.expand_to(x as i32, y as i32);
+                    if mouse_input.just_pressed(MouseButton::Left) {
+                        map.0.expand_to(x as i32, y as i32);
 
-                    if let Some(tile) = map.0.tiles.get_mut(y as usize) {
-                        if let Some(tile) = tile.get_mut(x as usize) {
-                            tile.tile_type = TileType::Walkable;
-                            tile.object = Some(Object {
-                                object_type: ObjectType::Wall,
-                                rotation: Quat::IDENTITY,
-                            });
-                            render_tile(&mut commands, x as usize, y as usize, tile);
+                        if let Some(tile) = map.0.tiles.get_mut(y as usize) {
+                            if let Some(tile) = tile.get_mut(x as usize) {
+                                tile.tile_type = TileType::Walkable;
+                                tile.object = Some(Object {
+                                    object_type: ObjectType::Wall,
+                                    rotation: Quat::IDENTITY,
+                                });
+                                render_tile(&mut commands, x as usize, y as usize, tile);
+                            }
                         }
-                    }
 
-                    if x < 0.0 {
-                        camera.translation.x = -((window.cursor_position().unwrap().x
-                            - window.width() * 0.5)
-                            * camera.scale.x);
-                    }
-                    if y < 0.0 {
-                        camera.translation.y = -((window.height() * 0.5
-                            - window.cursor_position().unwrap().y)
-                            * camera.scale.y);
-                    }
+                        if x < 0.0 {
+                            camera.translation.x = -((window.cursor_position().unwrap().x
+                                - window.width() * 0.5)
+                                * camera.scale.x);
+                        }
+                        if y < 0.0 {
+                            camera.translation.y = -((window.height() * 0.5
+                                - window.cursor_position().unwrap().y)
+                                * camera.scale.y);
+                        }
 
-                    draw_state.set(DrawState::Refresh);
+                        draw_state.set(DrawState::Refresh);
+                    }
                 }
             }
         }
