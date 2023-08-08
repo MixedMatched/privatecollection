@@ -332,9 +332,10 @@ mod editor {
     use super::{despawn, InFile, State};
     use bevy::{
         input::mouse::{MouseMotion, MouseWheel},
-        prelude::*, text::Text2dBounds,
+        prelude::*,
+        text::Text2dBounds,
     };
-    use map::{Map, Tile, TileType, Object, ObjectType};
+    use map::{Map, Object, ObjectType, Tile, TileType};
     use rfd::FileDialog;
 
     #[derive(Component)]
@@ -344,6 +345,9 @@ mod editor {
 
     #[derive(Resource, Default)]
     struct LiveMap(Map);
+
+    #[derive(Component)]
+    struct Highlighted;
 
     const BOX_SIZE: f32 = 256.0;
 
@@ -439,7 +443,7 @@ mod editor {
                     color: Color::BLACK,
                     ..default()
                 };
-                
+
                 if let Some(object) = &tile.object {
                     text.push(TextSection {
                         value: object.object_type.to_string(),
@@ -508,19 +512,19 @@ mod editor {
     ) {
         if let Ok(mut camera) = camera.get_single_mut() {
             if let Ok(window) = windows.get_single() {
+                let x = window.cursor_position().unwrap().x - window.width() * 0.5;
+                let y = window.height() * 0.5 - window.cursor_position().unwrap().y;
+
+                let x = x + camera.translation.x;
+                let y = y + camera.translation.y;
+
+                let x = x * camera.scale.x;
+                let y = y * camera.scale.y;
+
+                let x = x.floor() / BOX_SIZE;
+                let y = y.floor() / BOX_SIZE;
+
                 if mouse_input.just_pressed(MouseButton::Left) {
-                    let x = window.cursor_position().unwrap().x - window.width() * 0.5;
-                    let y = window.height() * 0.5 - window.cursor_position().unwrap().y;
-
-                    let x = x + camera.translation.x;
-                    let y = y + camera.translation.y;
-
-                    let x = x * camera.scale.x;
-                    let y = y * camera.scale.y;
-
-                    let x = x.floor() / BOX_SIZE;
-                    let y = y.floor() / BOX_SIZE;
-
                     map.0.expand_to(x as i32, y as i32);
 
                     if let Some(tile) = map.0.tiles.get_mut(y as usize) {
