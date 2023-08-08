@@ -329,12 +329,12 @@ mod menu {
 mod editor {
     use std::{fs::File, io::Write};
 
-    use super::{despawn, InFile, State, TEXT_COLOR};
+    use super::{despawn, InFile, State};
     use bevy::{
         input::mouse::{MouseMotion, MouseWheel},
-        prelude::*,
+        prelude::*, text::Text2dBounds,
     };
-    use map::{Map, Tile, TileType};
+    use map::{Map, Tile, TileType, Object, ObjectType};
     use rfd::FileDialog;
 
     #[derive(Component)]
@@ -344,6 +344,8 @@ mod editor {
 
     #[derive(Resource, Default)]
     struct LiveMap(Map);
+
+    const BOX_SIZE: f32 = 256.0;
 
     #[derive(Clone, Copy, Default, Eq, PartialEq, Debug, Hash, States)]
     enum DrawState {
@@ -418,12 +420,12 @@ mod editor {
                             TileType::Walkable => Color::WHITE,
                             TileType::Blocked => Color::GRAY,
                         },
-                        custom_size: Some(Vec2::new(32.0, 32.0)),
+                        custom_size: Some(Vec2::new(BOX_SIZE, BOX_SIZE)),
                         ..default()
                     },
                     transform: Transform::from_translation(Vec3::new(
-                        x as f32 * 32.0,
-                        y as f32 * 32.0,
+                        x as f32 * BOX_SIZE,
+                        y as f32 * BOX_SIZE,
                         0.0,
                     )),
                     ..default()
@@ -431,49 +433,45 @@ mod editor {
                 TileComponent,
             ))
             .with_children(|parent| {
-                let mut text = String::new();
+                let mut text = Vec::new();
+                let text_style = TextStyle {
+                    font_size: 75.0,
+                    color: Color::BLACK,
+                    ..default()
+                };
+                
+                if let Some(object) = &tile.object {
+                    text.push(TextSection {
+                        value: object.object_type.to_string(),
+                        style: text_style.clone(),
+                    });
+                }
 
-                text += ("Object: ".to_owned()
-                    + &if let Some(object) = tile.object {
-                        object.object_type.to_string()
-                    } else {
-                        "None".to_string()
-                    })
-                    .as_str();
+                if let Some(floor_object) = &tile.floor_object {
+                    text.push(TextSection {
+                        value: floor_object.object_type.to_string(),
+                        style: text_style.clone(),
+                    });
+                }
 
-                text += "\n";
-
-                text += ("FloorObject: ".to_owned()
-                    + &if let Some(floor) = tile.floor_object {
-                        floor.object_type.to_string()
-                    } else {
-                        "None".to_string()
-                    })
-                    .as_str();
-
-                text += "\n";
-
-                text += ("Connection: ".to_owned()
-                    + &if let Some(connection) = tile.connection.clone() {
-                        connection.to_string()
-                    } else {
-                        "None".to_string()
-                    })
-                    .as_str();
+                if let Some(connection) = &tile.connection {
+                    text.push(TextSection {
+                        value: connection.to_string(),
+                        style: text_style,
+                    });
+                }
 
                 parent.spawn(Text2dBundle {
                     text: Text {
-                        sections: vec![TextSection {
-                            value: text,
-                            style: TextStyle {
-                                font: Handle::default(),
-                                font_size: 10.0,
-                                color: TEXT_COLOR,
-                            },
-                        }],
+                        sections: text,
                         alignment: TextAlignment::Center,
                         ..default()
                     },
+                    text_2d_bounds: Text2dBounds {
+                        size: Vec2::new(BOX_SIZE, BOX_SIZE),
+                        ..default()
+                    },
+                    transform: Transform::from_translation(Vec3::Z),
                     ..default()
                 });
             });
@@ -520,14 +518,18 @@ mod editor {
                     let x = x * camera.scale.x;
                     let y = y * camera.scale.y;
 
-                    let x = x.floor() / 32.0;
-                    let y = y.floor() / 32.0;
+                    let x = x.floor() / BOX_SIZE;
+                    let y = y.floor() / BOX_SIZE;
 
                     map.0.expand_to(x as i32, y as i32);
 
                     if let Some(tile) = map.0.tiles.get_mut(y as usize) {
                         if let Some(tile) = tile.get_mut(x as usize) {
                             tile.tile_type = TileType::Walkable;
+                            tile.object = Some(Object {
+                                object_type: ObjectType::Wall,
+                                rotation: Quat::IDENTITY,
+                            });
                             render_tile(&mut commands, x as usize, y as usize, tile);
                         }
                     }
